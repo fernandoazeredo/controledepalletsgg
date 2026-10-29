@@ -38,19 +38,61 @@ function periodRange(preset,now=new Date(),months=3){
 function clearRecords(rows,keepStock,identity){const qty=stock(rows);return keepStock&&qty>0?[{id:identity.id,type:'balance',qty,at:identity.at,note:'Estoque preservado após limpeza do extrato',photo:null}]:[];}
 function stockMessage(rows,now=new Date()){return `*ESTOQUE DE PALLETS*\n\n*${fmt(stock(rows))} pallets disponíveis*\n\nData: ${date(now)}\nHora: ${time(now)} (Brasília)\n\nPosição do estoque neste horário. A quantidade pode mudar durante o dia.\n\nControle de Pallets GG`;}
 function makePdf(rows,options={}){
- const now=options.now||new Date(),items=filter(rows,options.from,options.to,options.type),ins=items.filter(r=>r.type==='in').reduce((s,r)=>s+r.qty,0),outs=items.filter(r=>r.type==='out').reduce((s,r)=>s+r.qty,0);
- const clean=s=>String(s).replace(/[\r\n\t]+/g,' ').replace(/[^\x20-\xFF]/g,'?');
- const esc=s=>clean(s).replace(/([\\()])/g,'\\$1');
- const lines=[{s:'EXTRATO DE MOVIMENTACAO',size:18,bold:true},{s:`Emitido em ${date(now)} às ${time(now)} (Brasília)`,size:10},{s:`Período: ${options.from?date(options.from+'T12:00:00Z'):'início'} até ${options.to?date(options.to+'T12:00:00Z'):'hoje'} | Tipo: ${options.type==='in'?'Entradas':options.type==='out'?'Saídas':'Todas'}`,size:10},{s:`Estoque atual na emissão: ${fmt(stock(rows))} pallets`,size:12,bold:true},{s:`Seleção: ${fmt(ins)} entradas | ${fmt(outs)} saídas | Saldo: ${fmt(ins-outs)}`,size:10},{s:'',size:8},{s:'DATA / HORA                   MOVIMENTO             QUANTIDADE',size:10,bold:true}];
- const baseline=rows.find(r=>r.type==='balance');if(baseline)lines.splice(5,0,{s:`Estoque preservado após limpeza em ${date(baseline.at)}: ${fmt(baseline.qty)} pallets (não é entrada).`,size:9});
- if(!items.length)lines.push({s:'Nenhuma movimentação no período selecionado.',size:11});
- for(const r of items){lines.push({s:`${date(r.at)}  ${time(r.at)}      ${r.type==='in'?'ENTRADA':'SAÍDA'}             ${r.type==='in'?'+':'-'}${fmt(r.qty)} pallets`,size:11,bold:true});if(r.note){const text=clean('Obs.: '+r.note);for(let i=0;i<text.length;i+=85)lines.push({s:text.slice(i,i+85),size:9});}if(r.photo)lines.push({s:'Foto anexada à movimentação no aplicativo.',size:9});lines.push({s:'',size:5});}
- lines.push({s:'Horários de Brasília. Fotos ficam no aplicativo e na cópia de segurança.',size:9});
- const pages=[];let page=[],y=740;for(const line of lines){const height=line.size+10;if(y-height<65){pages.push(page);page=[];y=740;}page.push({...line,y});y-=height;}pages.push(page);
- const objs=[null,'<< /Type /Catalog /Pages 2 0 R >>','', '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>','<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>'];let kids=[];
- pages.forEach((p,i)=>{const pid=objs.length,cid=pid+1;kids.push(`${pid} 0 R`);let commands='0.094 0.239 0.36 rg 0 782 595 60 re f\nBT /F2 16 Tf 1 1 1 rg 38 805 Td (Controle de Pallets GG) Tj ET\n';for(const l of p)commands+=`BT /F${l.bold?2:1} ${l.size} Tf 0.12 0.20 0.26 rg 1 0 0 1 38 ${l.y} Tm (${esc(l.s)}) Tj ET\n`;commands+=`BT /F1 9 Tf 0.4 0.46 0.5 rg 38 33 Td (Controle de Pallets GG | Página ${i+1} de ${pages.length}) Tj ET\n`;objs.push(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents ${cid} 0 R >>`,`<< /Length ${commands.length} >>\nstream\n${commands}endstream`);});objs[2]=`<< /Type /Pages /Kids [${kids.join(' ')}] /Count ${kids.length} >>`;
- let pdf='%PDF-1.4\n%\xE2\xE3\xCF\xD3\n',offsets=[0];for(let i=1;i<objs.length;i++){offsets.push(pdf.length);pdf+=`${i} 0 obj\n${objs[i]}\nendobj\n`;}const start=pdf.length;pdf+=`xref\n0 ${objs.length}\n0000000000 65535 f \n`;for(let i=1;i<objs.length;i++)pdf+=`${String(offsets[i]).padStart(10,'0')} 00000 n \n`;pdf+=`trailer\n<< /Size ${objs.length} /Root 1 0 R >>\nstartxref\n${start}\n%%EOF`;return Uint8Array.from(pdf,c=>c.charCodeAt(0)&255);
+ const now=options.now||new Date(),items=filter(rows,options.from,options.to,options.type);
+ const ins=items.filter(r=>r.type==='in').reduce((n,r)=>n+r.qty,0),outs=items.filter(r=>r.type==='out').reduce((n,r)=>n+r.qty,0);
+ const clean=v=>String(v??'').replace(/[\r\n\t]+/g,' ').replace(/[^\x20-\xFF]/g,'?');
+ const esc=v=>clean(v).replace(/([\\()])/g,'\\$1');
+ const objects=[null,'<< /Type /Catalog /Pages 2 0 R >>','',
+ '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>',
+ '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>'];
+ const pages=[];let commands='',y=0;
+ function rect(x,yy,w,h,color){commands+=color+' rg '+x+' '+yy+' '+w+' '+h+' re f\n';}
+ function text(x,yy,value,size,bold,color){commands+='BT /F'+(bold?2:1)+' '+(size||10)+' Tf '+(color||'.13 .22 .31')+' rg 1 0 0 1 '+x+' '+yy+' Tm ('+esc(value)+') Tj ET\n';}
+ function rule(yy){rect(38,yy,519,.7,'.87 .90 .93');}
+ function header(){
+  commands='';rect(0,782,595,60,'.095 .239 .361');
+  text(38,807,'Controle de Pallets GG',16,true,'1 1 1');
+  rect(38,749,4,18,'.09 .47 .36');
+  text(51,753,'EXTRATO DE MOVIMENTACOES',15,true);y=731;
+ }
+ function footer(){rule(49);text(38,32,'Controle de Pallets GG | Documento gerado no celular',8,false,'.42 .47 .52');pages.push(commands);}
+ function tableHeader(){rect(38,y-10,519,29,'.91 .94 .97');text(48,y,'DATA / HORA',9,true);text(246,y,'TIPO',9,true);text(412,y,'QUANTIDADE',9,true);y-=39;}
+ function ensure(need){if(y-need<78){footer();header();text(38,y,'CONTINUACAO DO EXTRATO',9,true);y-=24;tableHeader();}}
+ function noteLines(value,max){const words=clean(value).split(/\s+/),out=[];let line='';for(const word of words){if((line+' '+word).trim().length>max){if(line)out.push(line);line=word;}else line=(line+' '+word).trim();}if(line)out.push(line);return out;}
+ header();
+ text(38,y,'Emitido em '+date(now)+' as '+time(now)+' (Brasilia)',9);y-=20;
+ text(38,y,'Periodo: '+(options.from||'Inicio')+' a '+(options.to||'Hoje')+' | Filtro: '+(options.type==='in'?'Entradas':options.type==='out'?'Saidas':'Todos'),9);y-=30;
+ const boxes=[['ENTRADAS',fmt(ins),'.90 .97 .94','.08 .43 .30'],['SAIDAS',fmt(outs),'1 .93 .90','.65 .25 .20'],['SALDO DO PERIODO',fmt(ins-outs),'.91 .95 .99','.10 .30 .46']];
+ boxes.forEach((v,i)=>{const x=38+i*176;rect(x,y-58,167,66,v[2]);text(x+12,y-18,v[0],9,true,v[3]);text(x+12,y-44,v[1],21,true,v[3]);});
+ y-=83;text(38,y,'ESTOQUE ATUAL: '+fmt(stock(rows))+' pallets',12,true);y-=26;
+ const base=rows.find(r=>r.type==='balance');if(base){text(38,y,'Saldo inicial preservado: '+fmt(base.qty)+' pallets',9);y-=19;}
+ rule(y);y-=26;tableHeader();
+ if(!items.length){text(48,y-8,'Nenhuma movimentacao no periodo selecionado.',10);y-=32;}
+ for(const r of items){
+  const notes=r.note?noteLines('Observacao: '+r.note,80):[],height=38+notes.length*13+(r.photo?13:0);
+  ensure(height);
+  text(48,y,date(r.at)+'  '+time(r.at),10,true);
+  text(246,y,r.type==='in'?'ENTRADA':'SAIDA',10,true,r.type==='in'?'.08 .43 .30':'.65 .25 .20');
+  text(412,y,(r.type==='in'?'+':'-')+fmt(r.qty)+' pallets',10,true);
+  y-=19;for(const n of notes){text(48,y,n,8,false,'.39 .46 .52');y-=13;}
+  if(r.photo){text(48,y,'Foto disponivel no aplicativo.',8,false,'.39 .46 .52');y-=13;}
+  rule(y-6);y-=19;
+ }
+ ensure(27);text(38,y-7,'Horarios de Brasilia. Fotos nao incorporadas ao relatorio.',8,false,'.39 .46 .52');footer();
+ const children=[];
+ pages.forEach((p,i)=>{const pid=objects.length,cid=pid+1;children.push(pid+' 0 R');
+  p+='BT /F1 8 Tf .4 .46 .52 rg 1 0 0 1 520 32 Tm ('+(i+1)+' / '+pages.length+') Tj ET\n';
+  objects.push('<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents '+cid+' 0 R >>','<< /Length '+p.length+' >>\nstream\n'+p+'endstream');
+ });
+ objects[2]='<< /Type /Pages /Kids ['+children.join(' ')+'] /Count '+children.length+' >>';
+ let pdf='%PDF-1.4\n%\xE2\xE3\xCF\xD3\n',offsets=[0];
+ for(let i=1;i<objects.length;i++){offsets.push(pdf.length);pdf+=i+' 0 obj\n'+objects[i]+'\nendobj\n';}
+ const start=pdf.length;pdf+='xref\n0 '+objects.length+'\n0000000000 65535 f \n';
+ for(let i=1;i<objects.length;i++)pdf+=String(offsets[i]).padStart(10,'0')+' 00000 n \n';
+ pdf+='trailer\n<< /Size '+objects.length+' /Root 1 0 R >>\nstartxref\n'+start+'\n%%EOF';
+ return Uint8Array.from(pdf,c=>c.charCodeAt(0)&255);
 }
+
 root.PalletCore={fmt,date,time,day,stock,sorted,filter,checkTimeline,validateBackup,periodRange,clearRecords,stockMessage,makePdf};
 })(typeof window!=='undefined'?window:globalThis);
 </script><script>'use strict';
