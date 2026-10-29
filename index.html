@@ -3,6 +3,55 @@
 .gate-card{text-align:center}.gate-card>img{display:block;margin-left:auto;margin-right:auto}.gate-card label{text-align:center}
 
 select{font:inherit;min-height:51px;border:1px solid var(--line);background:var(--bg);border-radius:12px;color:var(--text);padding:12px;width:100%;font-size:16px;margin:0 0 16px;touch-action:manipulation}select:focus{outline:2px solid #73a7d0;outline-offset:1px}.clear-section{margin-top:30px;padding-top:22px;border-top:1px solid var(--line)}.clear-section h2{margin-bottom:16px}.clear-section>p{font-size:12px;margin:8px 0 20px}.danger{background:var(--red-bg);color:var(--red);border:1px solid var(--red)}.danger-solid{background:#b42d30;color:white;border-color:#b42d30}.clear-dialog-actions{display:flex;gap:10px}.clear-dialog-actions>button{flex:1}.confirm-check{display:flex;align-items:flex-start;gap:12px;margin:23px 0}.confirm-check input{width:22px;min-height:22px;flex-shrink:0;margin:0;accent-color:#b42d30}.confirm-check span{font-size:13px;line-height:1.6}#clear-description{font-size:14px;line-height:1.6}#balance-info{border-left:3px solid var(--line);padding-left:12px}
+
+/* Layout responsivo: smartphones e tablets */
+html,body{max-width:100%;overflow-x:clip}
+#app,.page,main,.filter-card,.settings-card{min-width:0;max-width:100%;box-sizing:border-box}
+.topbar{width:100%;max-width:720px;gap:12px}
+.brand{min-width:0;flex:1}
+.brand span{min-width:0}
+.brand b{overflow-wrap:break-word;font-size:clamp(15px,3.9vw,22px)}
+.top-actions{flex-shrink:0}
+.filter-card{overflow:hidden}
+.date-grid{width:100%;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.date-grid>label{min-width:0;max-width:100%;overflow:hidden}
+.date-grid input[type=date]{width:100%;max-width:100%;min-width:0;box-sizing:border-box;display:block}
+.summary>div{min-width:0}
+.summary strong{font-size:clamp(19px,4.4vw,24px)}
+.bottom-nav{box-sizing:border-box}
+@media (min-width:768px) and (max-width:1199px){
+ .topbar{max-width:840px;padding-left:28px;padding-right:28px}
+ main{max-width:800px;padding-left:28px;padding-right:28px}
+ .bottom-nav{max-width:800px}
+ .filter-card,.settings-card{padding:24px}
+ .date-grid{gap:18px}
+ .brand b{font-size:22px}
+}
+@media (max-width:540px){
+ main{padding-left:16px;padding-right:16px}
+ .topbar{padding-left:16px;padding-right:16px}
+ .filter-card,.settings-card{padding:16px}
+ .date-grid{grid-template-columns:minmax(0,1fr);gap:8px}
+ .date-grid input[type=date]{padding:11px 12px;font-size:16px}
+ .chips{gap:6px}
+ .chip{min-width:0}
+ .bottom-nav{padding-left:10px;padding-right:10px}
+ .bottom-nav button{min-width:0}
+ .stock-card{padding-left:18px;padding-right:18px}
+ .stock-main{gap:6px}
+ .pallet-art{width:clamp(74px,25vw,110px)}
+ .movement-actions{gap:10px}
+ .movement{min-width:0;padding:16px}
+ .brand b{font-size:clamp(14px,4vw,19px)}
+}
+@media (max-width:360px){
+ .topbar{gap:6px}
+ .icon-btn{width:38px;height:40px}
+ .brand img{width:36px;height:36px}
+ .movement b{font-size:18px}
+ .stock-main strong{font-size:48px}
+ .summary{gap:4px}
+}
 </style></head><body>
 <div id="gate" class="gate"><div class="gate-card"><img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA4MCA4MCI+PHJlY3Qgd2lkdGg9IjgwIiBoZWlnaHQ9IjgwIiByeD0iMjQiIGZpbGw9IiMxODNkNWMiLz48ZyBmaWxsPSJub25lIiBzdHJva2U9IiNhOWUxY2UiIHN0cm9rZS13aWR0aD0iNC41IiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiPjxwYXRoIGQ9Im0xNiAyOSAyNC0xMiAyNCAxMi0yNCAxMnpNMTYgNDFsMjQgMTIgMjQtMTJNMTYgNTNsMjQgMTIgMjQtMTJNMTYgMjl2OG00OC04djhNMTYgNTN2OG00OC04djhNNDAgNDF2OW0wIDE1djZNMjggMjNsMjQgMTIiLz48L2c+PC9zdmc+DQo=" width="72" height="72" alt="Controle de Pallets GG"><p class="eyebrow">Controle de Pallets GG</p><h1 id="gate-title">Seu estoque,<br>sem complicação.</h1><p id="gate-help">Crie uma senha de 4 números para acessar neste celular.</p><form id="pin-form"><label for="pin">Senha de 4 números</label><input id="pin" type="password" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" minlength="4" autocomplete="off" required placeholder="• • • •"><div id="repeat-wrap"><label for="pin-repeat">Repita a senha</label><input id="pin-repeat" type="password" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" autocomplete="off" placeholder="• • • •"></div><p id="pin-error" class="error" role="alert"></p><button class="primary wide" id="unlock" type="submit">Criar senha e começar</button></form></div></div>
 <div id="app" hidden><header class="topbar"><a href="#inicio" class="brand"><img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA4MCA4MCI+PHJlY3Qgd2lkdGg9IjgwIiBoZWlnaHQ9IjgwIiByeD0iMjQiIGZpbGw9IiMxODNkNWMiLz48ZyBmaWxsPSJub25lIiBzdHJva2U9IiNhOWUxY2UiIHN0cm9rZS13aWR0aD0iNC41IiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiPjxwYXRoIGQ9Im0xNiAyOSAyNC0xMiAyNCAxMi0yNCAxMnpNMTYgNDFsMjQgMTIgMjQtMTJNMTYgNTNsMjQgMTIgMjQtMTJNMTYgMjl2OG00OC04djhNMTYgNTN2OG00OC04djhNNDAgNDF2OW0wIDE1djZNMjggMjNsMjQgMTIiLz48L2c+PC9zdmc+DQo=" alt="" width="44" height="44"><span><b aria-label="Controle de Pallets GG">Controle de Pallets GG</b></span></a><div class="top-actions"><button id="theme-toggle" class="icon-btn" aria-label="Ativar modo escuro"></button><button id="exit" class="icon-btn" aria-label="Sair do aplicativo" title="Sair"></button></div></header><main>
